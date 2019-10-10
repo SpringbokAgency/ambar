@@ -10,6 +10,7 @@ import DeleteIcon from 'material-ui/svg-icons/action/delete'
 import UndoIcon from 'material-ui/svg-icons/content/undo'
 import DetailedCardHeader from './components/DetailedCardHeader'
 import { files } from 'utils/'
+import 'whatwg-fetch'
 
 import classes from './DetailedCard.scss'
 
@@ -17,6 +18,23 @@ class DetailedCard extends Component {
     startLoadingHighlight() {
         const { searchQuery, hit: { file_id: fileId }, loadHighlight } = this.props
         loadHighlight(fileId, searchQuery)
+    }
+
+    fetchFileTextContents(props) {
+      fetch(props.textUri, {
+          method: 'GET'
+      }).then((resp) => {
+        if (resp.status == 200) {
+          if (resp.json) {
+            return resp.json()
+          } else {
+            return resp
+          }
+        } else { throw resp }
+      }).then((res) => {
+          console.log('fetchFileTextContents', res)
+          props.fileTextContent = res;
+      })
     }
 
     render() {
@@ -45,7 +63,10 @@ class DetailedCard extends Component {
             hideFile,
             showFile,
             localization,
-            preserveOriginals
+            preserveOriginals,
+            textUri,
+            fileTextContent,
+            filePageNumber
         } = this.props
 
         const contentHighlight = content && content.highlight && content.highlight.text ? content.highlight.text : undefined
@@ -94,6 +115,12 @@ class DetailedCard extends Component {
                                         <img onTouchTap={() => { toggleImagePreview(thumbnailUri) }}
                                             className={classes.searchResultRowCardTextThumbnailImage}
                                             src={thumbnailUri} />
+
+                                        <button onClick={this.fetchFileTextContents(this.props)}>Get page index</button>
+
+                                        <p>{this.props.filePageNumber}</p>
+
+                                        <pre>{this.props.fileTextContent}</pre>
                                     </div>
                                 </MediaQuery>
                             }
@@ -108,7 +135,7 @@ class DetailedCard extends Component {
                                     title={localization.searchPage.downloadDescriptionLabel}
                                     primary={true}
                                     onTouchTap={() => { window.open(downloadUri) }}
-                                />                                                  
+                                />
                             </div>}
                             <div>
                                 {!hidden_mark && <FlatButton
@@ -118,7 +145,7 @@ class DetailedCard extends Component {
                                     title={localization.searchPage.removeDescriptionLabel}
                                     style={{ color: 'grey' }}
                                     onTouchTap={() => hideFile(fileId)}
-                                />}                                
+                                />}
                             </div>
                         </div>}
                     </CardActions>

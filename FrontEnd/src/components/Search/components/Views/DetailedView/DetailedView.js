@@ -18,7 +18,7 @@ class DetailedView extends Component {
         const {
             hits,
             searchQuery,
-            urls            
+            urls
         } = this.props
 
         if (!searchQuery || !hits || hits.size === 0) {
@@ -32,7 +32,8 @@ class DetailedView extends Component {
                         key={hit.file_id}
                         hit={hit}
                         thumbnailUri={urls.ambarWebApiGetThumbnail(hit.sha256)}
-                        downloadUri={urls.ambarWebApiGetFile(hit.meta.full_name)}                        
+                        downloadUri={urls.ambarWebApiGetFile(hit.meta.full_name)}
+                        textUri={urls.ambarWebApiGetFileText(hit.meta.download_uri)}
                         {...this.props}
                     />
                 )}

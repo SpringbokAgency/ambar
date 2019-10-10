@@ -21,7 +21,7 @@
   },
   "betterScripts": {
     "compile": {
-      "command": "babel-node bin/compile",
+      "command": "npm run clean && babel-node bin/compile",
       "env": {
         "DEBUG": "app:*"
       }
