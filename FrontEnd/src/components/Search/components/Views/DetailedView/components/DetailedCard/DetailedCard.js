@@ -15,39 +15,214 @@ import 'whatwg-fetch'
 import classes from './DetailedCard.scss'
 
 class DetailedCard extends Component {
+
+    constructor(props) {
+        super(props);
+
+        this.state = {
+            ...props,
+            fileTextContent: undefined,
+            filePageNumbers: [],
+        }
+
+        this.getPageNumbers = this.getPageNumbers.bind(this)
+        this.processPage = this.processPage.bind(this)
+        this.getFileAsText = this.getFileAsText.bind(this)
+        this.fetchFileTextContents = this.fetchFileTextContents.bind(this)
+    }
+
     startLoadingHighlight() {
         const { searchQuery, hit: { file_id: fileId }, loadHighlight } = this.props
         loadHighlight(fileId, searchQuery)
     }
 
-    fetchFileTextContents(props) {
-      fetch(props.textUri, {
-          method: 'GET'
-      }).then((resp) => {
-        if (resp.status == 200) {
-          if (resp.json) {
-            return resp.json()
-          } else {
-            return resp
-          }
-        } else { throw resp }
-      }).then((res) => {
-          console.log('fetchFileTextContents', res)
-          props.fileTextContent = res;
-      })
+    createPageUrl() {
+      console.log('foo');
+    }
+
+    getPageNumbers(e, hits = undefined) {
+        // Use text content already in state if possible
+        if (this.state.fileTextContent) {
+            return new Promise(resolve => {
+                resolve(this.processPage(this.state.fileTextContent, hits));
+            });
+        }
+
+        // Otherwise, fetch it
+        return this.getFileAsText().then(res => {
+            this.processPage(res, hits);
+        });
+    }
+
+    processPage(text, input = undefined) {
+        let hits = input;
+
+        if (hits === undefined) {
+            hits = this.props.hit && this.props.hit.content
+                ? this.getHits(this.props.hit.content)
+                : [];
+        }
+
+        const numbers = this.lookupHits(hits, text);
+
+        this.setState({
+          filePageNumbers: numbers
+        });
+
+        return numbers;
+    }
+
+    getFileAsText() {
+        const req = this.fetchFileTextContents();
+
+        if (!req) { return false; }
+
+        return req.then((res) => {
+            const clean = this.cleanText(res);
+
+            this.setState({
+                fileTextContent: clean,
+            });
+
+            return clean;
+        })
+    }
+
+    fetchFileTextContents() {
+        const uri = this.props.urls.ambarWebApiGetFileText(this.props.hit.meta.download_uri);
+
+        return fetch(uri, {
+            method: 'GET',
+            headers: [
+                ["Content-Type", "text/plain"]
+            ]
+        }).then((resp) => {
+            if (resp.status == 200) {
+                return resp.text();
+            } else {
+                throw resp;
+            }
+        });
+    }
+
+    constructRegex(str) {
+        let pattern = '.[\\s\\S]*?END PAGE #([0-9]*)';
+        pattern = pattern.replace('.', str);
+
+        return new RegExp(pattern, 'gm');
+    }
+
+    cleanStr(str) {
+        let r = str;
+
+        r = r.replace(new RegExp(/\r?\n|\r/gm), '');
+        r = r.replace(new RegExp(/\s/g), ' ');
+
+        return r;
+    }
+
+    cleanText(txt) {
+        let r = this.cleanStr(txt);
+
+        r = r.replace(new RegExp(/ +(?= )/gm),'');
+
+        return r;
+    }
+
+    cleanHit(hit) {
+        let r = this.cleanStr(hit);
+
+        const remove = ['<br\\/>', '<em>', '<\\/em>'];
+        // const escape = ['.', '?', '*', '(', ')', '|', '+'];
+
+        // Refine the search term to not span multiple pages
+        r = this.refineHit(r);
+
+        // Escape regex conflicting characters
+        r = this.regexSanitize(r);
+
+        // After using the em-tags during refine remove them
+        r = this.regexRemove(remove, r);
+
+        return r;
+    }
+
+    // src: https://stackoverflow.com/a/9310752
+    regexSanitize(input) {
+      return input.replace(new RegExp(/[-[\]{}()*+?.,\\^$|#\s]/, 'gm'), '\\$&');
+    }
+
+    regexRemove(needles, haystack) {
+        const re = new RegExp(needles.join('|'), 'g');
+        const r = haystack.replace(re, '');
+
+        return r;
+    }
+
+    // Unused
+    // regexEscape(needles, haystack) {
+    //     let r = haystack;
+
+    //     // Make sure each needle has at least one matching group. $1 will be the value of that group
+    //     needles.forEach(needle => {
+    //         const base = '(\\.)';
+    //         const pattern = base.replace('.', needle)
+    //         const re = new RegExp(pattern, 'g');
+    //         r = r.replace(re, '\\$1');
+    //     });
+
+    //     return r;
+    // }
+
+    refineHit(hit) {
+        let r = hit;
+
+        // Look for everything before the first "--END PAGE #" directly after any <em> tags
+        const re = new RegExp(/([\s\S]*?<em>[\s\S]*?<\/em>[\s\S]*?)---END PAGE #[0-9]*/gm);
+        const found = re.exec(r);
+
+        if (found && found.length === 2) {
+            r = found[1]; // first group
+        }
+
+        return r;
+    }
+
+    lookupHits(hits, text) {
+        return hits.map(hit => {
+            let r = undefined;
+
+            const clean = this.cleanHit(hit);
+            const re = new RegExp(this.constructRegex(clean));
+            const res = re.exec(text);
+
+            if (res && res.length === 2) {
+                const index = res[1];
+
+                r = index;
+            }
+
+            if (!r) { console.warn('Page Index resolved to false', {clean, re, res}) }
+
+            return r;
+        });
+    }
+
+    getHits(content) {
+        return content && content.highlight && content.highlight.text ? content.highlight.text : undefined;
     }
 
     render() {
         const {
             hit: {
                 fetching: fetching,
-            meta: meta,
-            content: content,
-            sha256: sha256,
-            tags: tags,
-            file_id: fileId,
-            isHidden: isHidden,
-            hidden_mark: hidden_mark
+                meta: meta,
+                content: content,
+                sha256: sha256,
+                tags: tags,
+                file_id: fileId,
+                isHidden: isHidden,
+                hidden_mark: hidden_mark
             },
             allTags,
             thumbnailUri,
@@ -69,7 +244,7 @@ class DetailedCard extends Component {
             filePageNumber
         } = this.props
 
-        const contentHighlight = content && content.highlight && content.highlight.text ? content.highlight.text : undefined
+        const contentHighlight = this.getHits(content);
 
         return (
             <Paper zDepth={1} className={classes.searchResultRowCard}>
@@ -103,11 +278,17 @@ class DetailedCard extends Component {
                                     </CardText>
                                 }
                                 {!fetching && contentHighlight && contentHighlight.map((hl, idx) =>
-                                    <CardText key={idx}
-                                        className={idx != contentHighlight.length - 1 ? classes.searchResultRowCardTextWithBorder : undefined}
-                                        dangerouslySetInnerHTML={{ __html: hl }}
-                                    />)
-                                }
+                                    <section
+                                        key={idx}
+                                        className={classes.searchResultRowCardTextWithBorder}>
+                                            <button onClick={this.createPageUrl}>Which page is this on?</button>
+
+                                            <p><b>Page Number:</b> {this.state.filePageNumbers[idx]}</p>
+                                            <p><b>Page URL:</b> {this.state.filePageNumbers[idx]}</p>
+
+                                            <CardText dangerouslySetInnerHTML={{ __html: hl }}/>
+                                    </section>
+                                )}
                             </div>
                             {!fetching && contentHighlight && content.thumb_available &&
                                 <MediaQuery query='(min-width: 1024px)'>
@@ -116,11 +297,9 @@ class DetailedCard extends Component {
                                             className={classes.searchResultRowCardTextThumbnailImage}
                                             src={thumbnailUri} />
 
-                                        <button onClick={this.fetchFileTextContents(this.props)}>Get page index</button>
+                                        <button onClick={this.getPageNumbers}>Get all page numbers</button>
 
-                                        <p>{this.props.filePageNumber}</p>
-
-                                        <pre>{this.props.fileTextContent}</pre>
+                                        <pre>{JSON.stringify(this.state.filePageNumbers)}</pre>
                                     </div>
                                 </MediaQuery>
                             }

@@ -33,7 +33,6 @@ class DetailedView extends Component {
                         hit={hit}
                         thumbnailUri={urls.ambarWebApiGetThumbnail(hit.sha256)}
                         downloadUri={urls.ambarWebApiGetFile(hit.meta.full_name)}
-                        textUri={urls.ambarWebApiGetFileText(hit.meta.download_uri)}
                         {...this.props}
                     />
                 )}

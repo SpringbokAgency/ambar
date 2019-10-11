@@ -21,21 +21,47 @@
     width: 100%;
     word-wrap: break-word;
     word-break: break-word;
-
-    > div {
-      > div {
-        height: 1px;
-        background-color: hotpink;
-      }
-    }
 }
 
 .searchResultRowCardTextWithBorder {
-    border-bottom: 1px solid #eeeeee;
+    padding: 1em;
+
+    button {
+        margin-bottom: 1em;
+    }
+
+    div {
+        padding: 0 !important;
+    }
+
+    &:not(:last-child) {
+        border-bottom: 1px solid #eeeeee;
+    }
 }
 
 .searchResultRowCardTextThumbnailContainer {
     border-left: 1px solid #eeeeee;
+
+    button {
+      display: block;
+      margin: 0 auto;
+      padding: 0.5em;
+    }
+
+    p {
+      display: block;
+      margin: 0.5em;
+    }
+
+    pre {
+      max-width: calc(250px - 1em);
+      overflow: auto;
+      width: 100%;
+      background-color: #efefef;
+      margin: 0.5em;
+      box-sizing: border-box;
+      max-height: 250px;
+    }
 }
 
 .searchResultRowCardTextThumbnailImage {
