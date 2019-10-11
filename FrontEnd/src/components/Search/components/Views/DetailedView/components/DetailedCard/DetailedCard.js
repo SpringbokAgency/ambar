@@ -22,60 +22,89 @@ class DetailedCard extends Component {
         this.state = {
             ...props,
             fileTextContent: undefined,
-            filePageNumbers: [],
-        }
+            filePageNumbers: {},
+        };
 
-        this.getPageNumbers = this.getPageNumbers.bind(this)
-        this.processPage = this.processPage.bind(this)
-        this.getFileAsText = this.getFileAsText.bind(this)
-        this.fetchFileTextContents = this.fetchFileTextContents.bind(this)
+        this.getPageNumber = this.getPageNumber.bind(this);
+        this.getPageNumbers = this.getPageNumbers.bind(this);
+        this.processPage = this.processPage.bind(this);
+        this.getFileAsText = this.getFileAsText.bind(this);
+        this.fetchFileTextContents = this.fetchFileTextContents.bind(this);
+        this.getHits = this.getHits.bind(this);
     }
+
+    // Methods
 
     startLoadingHighlight() {
         const { searchQuery, hit: { file_id: fileId }, loadHighlight } = this.props
         loadHighlight(fileId, searchQuery)
     }
 
-    createPageUrl() {
-      console.log('foo');
+    openPdfAtPageNumber(i, e) {
+      e.preventDefault();
+
+      return this.getFileAsBlob().then(res => {
+        this.showFile(res);
+      });
+    }
+
+    getPageNumber(i, e) {
+        e.preventDefault();
+
+        const hits = this.getHits();
+        const hit = hits[i];
+
+        return this.getFileAsText().then(res => {
+          this.processPage(res, [hit], i);
+      });
     }
 
     getPageNumbers(e, hits = undefined) {
-        // Use text content already in state if possible
-        if (this.state.fileTextContent) {
-            return new Promise(resolve => {
-                resolve(this.processPage(this.state.fileTextContent, hits));
-            });
-        }
+        e.preventDefault();
 
-        // Otherwise, fetch it
         return this.getFileAsText().then(res => {
             this.processPage(res, hits);
         });
     }
 
-    processPage(text, input = undefined) {
+    processPage(text, input = undefined, i = undefined) {
         let hits = input;
 
         if (hits === undefined) {
-            hits = this.props.hit && this.props.hit.content
-                ? this.getHits(this.props.hit.content)
-                : [];
+            hits = this.getHits();
         }
 
-        const numbers = this.lookupHits(hits, text);
+        // Hold as an object so we can insert at indexes
+        let numbers = {...this.lookupHits(hits, text)};
+
+        if (i && numbers[0]) {
+          numbers = {
+            [i]: numbers[0]
+          }
+        }
 
         this.setState({
-          filePageNumbers: numbers
+          filePageNumbers: {
+            ...this.state.filePageNumbers,
+            ...numbers
+          }
         });
 
         return numbers;
     }
 
     getFileAsText() {
+        // Use text content already in state if possible
+        if (this.state.fileTextContent) {
+            return new Promise(resolve => {
+                resolve(this.state.fileTextContent);
+            });
+        }
+
+        // Otherwise, fetch it
         const req = this.fetchFileTextContents();
 
-        if (!req) { return false; }
+        if (!req) { return new Promise(res => res(false)); }
 
         return req.then((res) => {
             const clean = this.cleanText(res);
@@ -85,6 +114,16 @@ class DetailedCard extends Component {
             });
 
             return clean;
+        })
+    }
+
+    getFileAsBlob() {
+        const req = this.fetchFileBlobContents();
+
+        if (!req) { return new Promise(res => res(false)); }
+
+        return req.then((res) => {
+            return res;
         })
     }
 
@@ -104,6 +143,24 @@ class DetailedCard extends Component {
             }
         });
     }
+
+    fetchFileBlobContents() {
+      const uri = this.props.downloadUri;
+
+      if (!uri) {
+        return false;
+      }
+
+      return fetch(uri, {
+          method: 'GET',
+      }).then((resp) => {
+        if (resp.status == 200) {
+          return resp.blob();
+      } else {
+          throw resp;
+      }
+      });
+  }
 
     constructRegex(str) {
         let pattern = '.[\\s\\S]*?END PAGE #([0-9]*)';
@@ -208,8 +265,57 @@ class DetailedCard extends Component {
         });
     }
 
-    getHits(content) {
-        return content && content.highlight && content.highlight.text ? content.highlight.text : undefined;
+    getHits(content = undefined) {
+        let r = [];
+
+        if (content === undefined) {
+            content = this.props.hit && this.props.hit.content ? this.props.hit.content : undefined;
+        }
+
+        if (content && content.highlight && content.highlight.text) {
+          r = content.highlight.text;
+        }
+
+        return r;
+    }
+
+    showFile(blob){
+        // It is necessary to create a new blob object with mime-type explicitly set
+        // otherwise only Chrome works like it should
+        var newBlob = new Blob([blob], {type: "application/pdf"})
+
+        // IE doesn't allow using a blob object directly as link href
+        // instead it is necessary to use msSaveOrOpenBlob
+        if (window.navigator && window.navigator.msSaveOrOpenBlob) {
+            window.navigator.msSaveOrOpenBlob(newBlob);
+            return;
+        }
+
+        // For other browsers:
+        // Create a link pointing to the ObjectURL containing the blob.
+        const data = window.URL.createObjectURL(newBlob);
+
+        var link = document.createElement('a');
+        link.href = data;
+        link.download="file.pdf";
+        link.click();
+
+        setTimeout(function(){
+            // For Firefox it is necessary to delay revoking the ObjectURL
+            window.URL.revokeObjectURL(data);
+        }, 100);
+    }
+
+    // Lifecycle
+
+    componentDidUpdate(prevProps) {
+      // Reset our page numbers and file content when the query or the amount of results change
+      if (prevProps.searchQuery !== this.props.searchQuery || this.getHits(prevProps.hit.content).length !== this.getHits().length) {
+        this.setState({
+          filePageNumbers: {},
+          fileTextContent: undefined
+        })
+      }
     }
 
     render() {
@@ -281,7 +387,8 @@ class DetailedCard extends Component {
                                     <section
                                         key={idx}
                                         className={classes.searchResultRowCardTextWithBorder}>
-                                            <button onClick={this.createPageUrl}>Which page is this on?</button>
+                                            <button onClick={this.getPageNumber.bind(this, idx)}>Which page is this on?</button>
+                                            <button onClick={this.openPdfAtPageNumber.bind(this, idx)}>Open</button>
 
                                             <p><b>Page Number:</b> {this.state.filePageNumbers[idx]}</p>
                                             <p><b>Page URL:</b> {this.state.filePageNumbers[idx]}</p>
