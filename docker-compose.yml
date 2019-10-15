@@ -78,7 +78,7 @@ services:
       - rabbitHost=amqp://rabbit
       - langAnalyzer=${langAnalyzer}  
       - SLAO_HOSTNAME=ambar 
-      - SLAO_API_KEY=
+      - SLAO_API_KEY=${slaoApiKey}
   webapi:
     depends_on:
       serviceapi:
@@ -100,7 +100,7 @@ services:
       - serviceApiUrl=http://serviceapi:8081
       - rabbitHost=amqp://rabbit  
       - SLAO_HOSTNAME=ambar
-      - SLAO_API_KEY=  
+      - SLAO_API_KEY=${slaoApiKey}
   frontend:
     depends_on:
       webapi:
@@ -115,7 +115,7 @@ services:
       - "80"
     environment:
       - api=http://${ambarHostIpAddress}:8080  
-  pipeline0:
+  pipeline:
     depends_on: 
       serviceapi: 
         condition: service_healthy                            
@@ -127,17 +127,18 @@ services:
       - id=0
       - api_url=http://serviceapi:8081
       - rabbit_host=amqp://rabbit
-  sb-crawler:
-    depends_on: 
-      serviceapi: 
-        condition: service_healthy 
-    build: ./LocalCrawler
-    restart: always
-    networks:
-      - internal_network
-    expose:
-      - "8082"
-    environment:      
-      - name=${crawlerName}
-    volumes:
-      - ${pathToCrawl}:/usr/data
+      - preserveOriginals=True
+  # crawler-local:
+  #   depends_on: 
+  #     serviceapi: 
+  #       condition: service_healthy 
+  #   build: ./LocalCrawler
+  #   restart: always
+  #   networks:
+  #     - internal_network
+  #   expose:
+  #     - "8082"
+  #   environment:      
+  #     - name=${crawlerName}
+  #   volumes:
+  #     - ${pathToCrawl}:/usr/data

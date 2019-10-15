@@ -9,6 +9,7 @@
   },
   "scripts": {
     "clean": "rimraf dist",
+    "build": "npm run compile",
     "compile": "better-npm-run compile",
     "lint": "eslint src tests server",
     "lint:fix": "npm run lint -- --fix",

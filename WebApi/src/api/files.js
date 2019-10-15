@@ -71,7 +71,15 @@ export default ({ storage }) => {
             request
                 .get(`http://${crawlerName}:${config.crawlerPort}/api/download?path=${encodeURIComponent(crawlerFilePath)}`)
                 .on('error', (err) => {
-                    console.log('err during downloading by path', err)
+                    console.log('err during downloading by path', err, {
+                        match,
+                        config,
+                        crawler: {
+                            name: crawlerName,
+                            port: config.crawlerPort,
+                            path: crawlerFilePath
+                        }
+                    })
                     res.end()
                 })
                 .pipe(res)
