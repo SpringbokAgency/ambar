@@ -7,6 +7,7 @@ services:
     networks:
       - internal_network
     build: ./MongoDB
+    image: ${awsRegistry}/mongo-db
     environment:
       - cacheSizeGB=2
     volumes:
@@ -18,6 +19,7 @@ services:
     networks:
       - internal_network
     build: ./ElasticSearch
+    image: ${awsRegistry}/elastic-search
     expose:
       - "9200" 
     environment:
@@ -39,6 +41,7 @@ services:
     networks:
       - internal_network
     build: ./Rabbit
+    image: ${awsRegistry}/rabbit
     hostname: rabbit
     expose:
       - "15672"
@@ -52,6 +55,7 @@ services:
     networks:
       - internal_network
     build: ./Redis
+    image: ${awsRegistry}/redis
     expose:
       - "6379" 
   serviceapi:
@@ -68,6 +72,7 @@ services:
     networks:
       - internal_network
     build: ./ServiceApi
+    image: ${awsRegistry}/service-api
     expose:
       - "8081"  
     environment:            
@@ -87,6 +92,7 @@ services:
     networks:
       - internal_network
     build: ./WebApi
+    image: ${awsRegistry}/web-api
     expose:
       - "8080"
     ports:
@@ -106,6 +112,7 @@ services:
       webapi:
         condition: service_healthy
     build: ./FrontEnd
+    image: ${awsRegistry}/front-end
     restart: always
     networks:
       - internal_network
@@ -117,9 +124,10 @@ services:
       - api=http://${ambarHostIpAddress}:8080  
   pipeline0:
     depends_on: 
-      serviceapi: 
+      serviceapi:
         condition: service_healthy                            
     build: ./Pipeline
+    image: ${awsRegistry}/pipeline
     restart: always
     networks:
       - internal_network  
@@ -129,9 +137,10 @@ services:
       - rabbit_host=amqp://rabbit
   sb-crawler:
     depends_on: 
-      serviceapi: 
+      serviceapi:
         condition: service_healthy 
     build: ./LocalCrawler
+    image: ${awsRegistry}/local-crawler
     restart: always
     networks:
       - internal_network
