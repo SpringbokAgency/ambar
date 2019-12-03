@@ -1,0 +1,42 @@
+{
+  "AWSEBDockerrunVersion": 2,
+  "volumes": [
+    {
+      "name": "dist",
+      "host": {
+        "sourcePath": "/var/app/current/dist"
+      }
+    },
+    {
+      "name": "db-volume",
+      "host": {
+        "sourcePath": "/var/app/current/dist/ambar/db:/data/db"
+      }
+    },
+    {
+      "name": "es-volume",
+      "host": {
+        "sourcePath": "/var/app/current/dist/ambar/es:/usr/share/elasticsearch/data"
+      }
+    },
+    {
+      "name": "rabbit-volume",
+      "host": {
+        "sourcePath": "/var/app/current/dist/ambar/rabbit:/var/lib/rabbitmq"
+      }
+    }
+  ],
+  "containerDefinitions": [
+    {
+      "name": "db",
+      "image": "856576022287.dkr.ecr.eu-west-1.amazonaws.com/bs/dtpdf/ambar/mongo-db:latest",
+      "environment": [
+        {
+          "cacheSizeGB": "2"
+        }
+      ],
+      "essential": true,
+      "memory": 128
+    }
+  ]
+}

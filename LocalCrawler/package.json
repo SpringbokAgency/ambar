@@ -1,6 +1,6 @@
 {
   "name": "local-crawler",
-  "version": "0.1",
+  "version": "0.1.0",
   "description": "Crawler for local folders",
   "main": "dist",
   "scripts": {

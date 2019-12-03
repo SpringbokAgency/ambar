@@ -4,6 +4,7 @@ from parsers.fileparserresponse import FileParserResponse
 from parsers.ocrproxy import OCRProxy, OCRProxyResponse
 from parsers.binarystringparser import BinaryStringParser
 import io
+import os
 import sys
 import re
 
@@ -28,6 +29,9 @@ class PDFParser:
         self.MemoryCacheImageOutputStream = autoclass('javax.imageio.stream.MemoryCacheImageOutputStream')
         self.System = autoclass('java.lang.System')   
         self.System.setProperty('org.apache.pdfbox.rendering.UsePureJavaCMYKConversion', 'true')
+
+        self.pageStartMarker = os.getenv('pageStartMarker', '---START PAGE #{0}---')
+        self.pageEndMarker = os.getenv('pageStartMarker', '---END PAGE #{0}---')
 
     def Parse(self, FileName, FileData):
         resp = FileParserResponse()
@@ -93,7 +97,12 @@ class PDFParser:
                     self.logger.LogMessage('info','could not extract annotations from page {0} of pdf {1}'.format(pageNumber + 1, FileName))
 
                 parsedText = self.NormalizeText(parsedText)
-                resp.text = '{0}\r\n{1}'.format(resp.text, parsedText)
+                resp.text = '{0}\r\n{2}\r\n{1}\r\n{3}'.format(
+                    resp.text,
+                    parsedText,
+                    self.pageStartMarker.format(pageNumber + 1),
+                    self.pageEndMarker.format(pageNumber + 1)
+                )
 
             inputStream = None
             document = None

@@ -222,7 +222,6 @@
         "ambar_file": {
             "_source": {
                 "excludes": [
-                    "content.text"
                 ]
             },
             "_all": {

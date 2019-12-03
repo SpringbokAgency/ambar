@@ -326,7 +326,10 @@ export const searchFiles = (esClient, request, from, size) => {
 
                 resolve({
                     total: result[0].hits.total + result[1].hits.total,
-                    hits: resultHits
+                    hits: resultHits,
+                    debug: {
+                        rawResponse: results
+                    }
                 })
             })
             .catch(err => reject(err))
